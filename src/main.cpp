@@ -53,7 +53,7 @@ void test_detection() {
 
 int main() {
     
-    // test_detection();
+    test_detection();
 
     // Deck h = Deck::new_hand(HAND_ROYAL_FLUSH);
 
