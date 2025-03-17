@@ -7,6 +7,9 @@
 
 #include <random>
 
+#define assert(expr) if (!(expr)) lg("ERROR: ASSERTION FAILED!!! %s\n", #expr)
+#define tassert(expr) if (!(expr)) lg("ERROR: ASSERTION FAILED!!! %s\n", #expr); else lg("PASS: %s\n", #expr)
+
 static size_t rand_int(size_t a, size_t b) {
     static std::random_device rd;  // Non-deterministic random source
     static std::mt19937 gen(rd()); // Mersenne Twister PRNG seeded with rd()
@@ -32,6 +35,11 @@ typedef enum {
     RANK_ACE,
     RANK_LAST,
 } rank_e;
+
+static inline rank_e rank_next(rank_e rank) {
+    if (rank == RANK_LAST) return rank;
+    return (rank_e)(((unsigned)rank)+1);
+}
 
 static const char* rank_name(rank_e rank) {
     static const char* rank_names[] = {
@@ -60,6 +68,11 @@ typedef enum {
     SUIT_LAST,
 } suit_e;
 
+static inline suit_e suit_next(suit_e suit) {
+    if (suit == SUIT_LAST) return suit;
+    return (suit_e)(((unsigned)suit)+1);
+}
+
 typedef enum {
     SUITBMP_NONE = 0,
     SUITBMP_HEARTS = 1,
@@ -68,6 +81,11 @@ typedef enum {
     SUITBMP_CLUBS = 8,
     SUITBMP_LAST = 16,
 } suit_bmp_e;
+
+static inline suit_bmp_e suitbmp_next(suit_bmp_e suit) {
+    if (suit == SUITBMP_LAST) return suit;
+    return (suit_bmp_e)(((unsigned)suit)<<1);
+}
 
 static suit_bmp_e suit_to_bmp(suit_e suit) {
     static const suit_bmp_e suits[] = {
@@ -126,18 +144,59 @@ static const char* hand_name(hand_e hand) {
     return names[hand];
 }
 
+static inline hand_e better_hand(hand_e a, hand_e b) {
+    return a > b ? a : b;
+}
 
 struct Deck : private std::vector<Card> {
     Deck(bool empty = false) {
         if (empty) return;
-        for (rank_e r = RANK_2; r < RANK_LAST; r = (rank_e)(((int)r)+1)) {
-            for (suit_e s = SUIT_HEARTS; s < SUIT_LAST; s = (suit_e)(((int)s)+1)) {
+        for (suit_e s = SUIT_HEARTS; s < SUIT_LAST; s = (suit_e)(((int)s)+1)) {
+            for (rank_e r = RANK_2; r < RANK_LAST; r = (rank_e)(((int)r)+1)) {
                 this->push_back(Card{r,s});
             }
         }
     }
 
+    size_t size() {return this->std::vector<Card>::size();}
+
+    static Deck new_empty() {return Deck(true);}
+
+    static Deck new_deck() {return Deck();}
+
+    static Deck new_shuffled(uint32_t N = 2048) {
+        Deck deck;
+        deck.shuffle(N);
+        return deck;
+    }
+
+    void swap(size_t a, size_t b) {
+        assert(a < this->size() && b < this->size());
+        if (a == b) return;
+        Card t = this->at(a);
+        (*this)[a] = (*this)[b];
+        (*this)[b] = t;
+    }
+
+    void cut() {
+        if (this->size() < 2) return;
+        const size_t split = this->size() / 2;
+        for (size_t i = 0; i < split; i++) {
+            this->swap(i, i + split);
+        }
+    }
+
     Card draw() {
+        Card res = this->back();
+        this->pop_back();
+        return res;
+    }
+
+    Card peek() {
+        return this->back();
+    }
+
+    Card draw_random() {
         size_t idx = rand_int(0, this->size()-1);
         if (!(idx < this->size())) {
             return Card{RANK_LAST,SUIT_LAST};
@@ -147,6 +206,12 @@ struct Deck : private std::vector<Card> {
         return res;
     }
 
+    void shuffle(uint32_t N = 2048) {
+        for (uint32_t i = 0; i < N; i++) {
+            this->push_back(this->draw_random());
+        }
+    }
+
     Deck deal(size_t const N = 5) {
         Deck hand(true);
         for (size_t i = 0; i < N; i++) {
@@ -154,10 +219,6 @@ struct Deck : private std::vector<Card> {
             hand.push_back(this->draw());
         }
         return hand;
-    }
-
-    static hand_e better_hand(hand_e a, hand_e b) {
-        return a > b ? a : b;
     }
 
     hand_e find_best_hand() {
@@ -187,8 +248,7 @@ struct Deck : private std::vector<Card> {
         for (size_t r = 0; r < RANK_LAST; r++) {
             switch (rank_ctr[r].count) {
             case 0:
-                break;
-            case 1:
+            case 1: 
                 break;
             case 2:
                 power = better_hand(power, pair ? HAND_2PAIR : HAND_PAIR);
@@ -214,7 +274,7 @@ struct Deck : private std::vector<Card> {
                 consec++;
                 cursuit &= rank_ctr[r].suitmap;
                 if (consec > 4) {
-                    power = better_hand(power, cursuit ? HAND_STRAIGHT_FLUSH : HAND_STRAIGHT);
+                    power = better_hand(power, cursuit ? (r == RANK_ACE ? HAND_ROYAL_FLUSH : HAND_STRAIGHT_FLUSH) : HAND_STRAIGHT);
                 }
             } else {
                 /* have none of rank r */
@@ -261,10 +321,13 @@ struct Deck : private std::vector<Card> {
 
 #include <iostream>
 
-int main() {
-    
+void test_interactive() {
     Deck deck;
 
+    lg("before shuff:\n");
+    deck.print();
+    lg("\n\nafter shuff:\n");
+    deck.shuffle();
     deck.print();
     while (1) {
         lg("draw? ");
@@ -278,10 +341,24 @@ int main() {
 
     }
 
-    // Deck sf = Deck::get_flush();
-    // sf.print();
+}
 
-    // lg("best: %s\n", hand_name(sf.find_best_hand()));
+void test_cut() {
+    Deck deck = Deck::new_deck();
+    deck.print();
+    nl();nl();
+    deck.cut();
+    deck.print();
+}
+
+void test_construct() {
+    {Deck d = Deck::new_deck(); tassert(d.size() == 52);}
+    {Deck d = Deck::new_shuffled(); tassert(d.size() == 52);}
+}
+
+int main() {
+    
+    test_construct();
 
     return 0;
 }
