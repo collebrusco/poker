@@ -2,8 +2,7 @@
 #include <cstdint>
 #include <stdio.h>
 #include <vector>
-#include <unordered_map>
-#include <unordered_set>
+#include <flgl.h>
 
 #include <random>
 
@@ -230,7 +229,7 @@ struct Deck : private std::vector<Card> {
         struct {
             uint32_t count;
             uint32_t suitmap;
-        } rank_ctr[RANK_LAST] = {0};
+        } rank_ctr[RANK_LAST] = {0,0};
 
         for (auto card : *this) {
             suit_ctr[card.suit]++;
