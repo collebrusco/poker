@@ -1,7 +1,9 @@
 
 
 default:
-	g++ -o poker poker.cpp
+	mkdir -p build && cd build && cmake .. && make -j
 
-run: default
-	./poker
+r:
+	./build/poker
+
+br: default r
