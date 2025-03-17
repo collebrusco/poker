@@ -61,8 +61,8 @@ const char* hand_name(hand_e hand) {
 
 Deck::Deck(bool empty) {
     if (empty) return;
-    for (suit_e s = SUIT_HEARTS; s < SUIT_LAST; s = (suit_e)(((int)s)+1)) {
-        for (rank_e r = RANK_2; r < RANK_LAST; r = (rank_e)(((int)r)+1)) {
+    for (suit_e s = SUIT_HEARTS; s < SUIT_LAST; s = suit_next(s)) {
+        for (rank_e r = RANK_2; r < RANK_LAST; r = rank_next(r)) {
             this->push_back(Card{r,s});
         }
     }
@@ -102,7 +102,7 @@ Card Deck::draw() {
     return res;
 }
 
-Card Deck::peek() {
+Card Deck::peek() const {
     return this->back();
 }
 
@@ -114,6 +114,14 @@ Card Deck::draw_random() {
     Card res = this->at(idx);
     this->erase(std::next(this->begin(), idx));
     return res;
+}
+
+void Deck::add(Card card) {
+    this->push_back(card);
+}
+
+void Deck::add(rank_e rank, suit_e suit) {
+    this->add(Card{rank, suit});
 }
 
 void Deck::shuffle(uint32_t N) {
@@ -131,10 +139,8 @@ Deck Deck::deal(size_t const N) {
     return hand;
 }
 
-hand_e Deck::find_best_hand() {
+hand_e Deck::find_best_hand() const {
     hand_e power = HAND_HIGHCARD;
-
-    
 
     uint32_t suit_ctr[SUIT_LAST] = {0};
     struct {
@@ -200,7 +206,7 @@ hand_e Deck::find_best_hand() {
     return power;
 }
 
-void Deck::print() {
+void Deck::print() const {
     for (auto card : *this) {
         card.print(); lg("\n");
     }

@@ -104,14 +104,16 @@ struct Deck : private std::vector<Card> {
     void swap(size_t a, size_t b);
     void cut();
     void shuffle(uint32_t N = 2048);
-    Card peek();
+    Card peek() const;
     Card draw();
     Card draw_random();
+    void add(Card card);
+    void add(rank_e rank, suit_e suit);
     Deck deal(size_t const N = 5);
 
-    hand_e find_best_hand();
+    hand_e find_best_hand() const;
 
-    void print();
+    void print() const;
 
 };
 
