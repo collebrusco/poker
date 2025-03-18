@@ -2,7 +2,7 @@
 
 #include "util.h"
 #include "Deck.h"
-
+#include "PokerDriver.h"
 
 #include <iostream>
 
@@ -53,11 +53,13 @@ void test_detection() {
 
 int main() {
     
-    test_detection();
+    // test_detection();
 
-    // Deck h = Deck::new_hand(HAND_ROYAL_FLUSH);
+    GameDriver* driver = new PokerDriver();
 
-    // lg ("hand should be royal flush, is %s\n", hand_name(h.find_best_hand()));
+    driver->start();
+
+    delete driver;
 
     return 0;
 }
