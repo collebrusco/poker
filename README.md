@@ -3,7 +3,7 @@ shoutout eva
 igtchaiimtwt
 
 ## asset info
-this is just notes for me
+this is just notes for me    
 cards png was made for free nicely by someone [here](https://devforum.play.date/t/playing-card-deck-imagetable-free-for-your-card-game/994)     
 ### dims
 the card sheet is:     
