@@ -39,7 +39,7 @@ class PokerDriver : public GameDriver {
 void PokerDriver::user_create() {
     gl.init();
     window.create("poker", 480 * 1, 360 * 1);
-    camera = OrthoCamera(vec3(0.,0.,-1), vec3(0,0.,1.), vec3(0.,1.,0.), 1e-6, 1e6, 6);
+    camera = OrthoCamera(vec3(0.,0.,-1.), vec3(0,0.,1.), vec3(0.,1.,0.), 1e-6, 1e6, 6);
     CardRenderer::init();
 
     deck = Deck::new_shuffled();
