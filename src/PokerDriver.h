@@ -12,9 +12,6 @@
 LOG_MODULE(poker);
 using namespace glm;
 
-Mesh<Vt_classic> m;
-Shader tsh;
-
 class CardRenderer {
     static Shader card_shader;
     static VertexArray card_vao;
@@ -38,7 +35,7 @@ public:
         card_ibo.create_bind();
         const uint32_t card_elems[] = {
             0, 1, 2,
-            0, 3, 1
+            0, 3, 2
         };
         card_ibo.buffer_data(6, card_elems);
         unbind();
@@ -80,23 +77,22 @@ public:
             break;
         }
         ivec2 sp = {
-            ((int)card.rank - 1) % 13,
+            ((int)card.rank + 1) % 13,
             y
         };
         card_shader.uIVec2("uSheetPos", sp);
     }
 
-    static void draw_at(float x, float y) {
+    static void draw_at(float x, float y, float r = 0.f) {
         card_shader.bind();
-        card_shader.uMat4("uModel", genModelMat2d(vec2(x,y), 0., vec2(1.)));
+        card_shader.uMat4("uModel", genModelMat2d(vec2(x,y), r, vec2(1.)));
         card_sheet.bind();
         card_vao.bind();
         gl.draw_vao_ibo(card_ibo);
-        gl.draw_mesh(m);
         unbind();
     }
 
-    static void draw_card_at(Card const& card, int x, int y) {
+    static void draw_card_at(Card const& card, float x, float y) {
         sync_to_card(card); draw_at(x, y);
     }
 
@@ -118,6 +114,12 @@ class PokerDriver : public GameDriver {
     virtual void user_render() override final;
     virtual void user_destroy() override final;
 
+    vec2 m2w(vec2 mp) {
+        mp /= vec2((float)window.frame.x, (float)window.frame.y);
+        vec4 p = vec4((mp.x * 2.) - 1.,  -((mp.y * 2) - 1), 0., 1.);
+        vec4 w = camera.iview() * (camera.iproj() * (p));
+        return w.xy();
+    }
 
     OrthoCamera camera;
     Deck deck;
@@ -128,11 +130,8 @@ class PokerDriver : public GameDriver {
 void PokerDriver::user_create() {
     gl.init();
     window.create("poker", 480 * 1, 360 * 1);
-    camera = OrthoCamera(vec3(0.,0.,-1), vec3(0,0.,1.), vec3(0.,1.,0.), 1e-6, 1e6, 10);
+    camera = OrthoCamera(vec3(0.,0.,-1), vec3(0,0.,1.), vec3(0.,1.,0.), 1e-6, 1e6, 6);
     CardRenderer::init();
-
-    m = DefaultMeshes::tile<Vt_classic>();
-    tsh = Shader::from_source("passthrough_vert", "color");
 
     deck = Deck::new_shuffled();
     card.card = deck.draw();
@@ -146,6 +145,7 @@ void PokerDriver::user_update(float dt, Keyboard const& kb, Mouse const& mouse) 
         card.card = deck.draw();
         LOG_INF("drew a %s of %s\n", rank_name(card.card.rank), suit_name(card.card.suit)); 
     }
+    card.pos = m2w(mouse.pos);
 }
 
 void PokerDriver::user_render() {

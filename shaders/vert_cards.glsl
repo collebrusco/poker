@@ -18,7 +18,7 @@ out vec2 iUV;
 out vec2 iPos;
 void main() {
     const vec2 card_size = vec2(1.f / 13.f, 1.f / 5.f);
-    iUV = (aUV + vec2(float(uSheetPos.x), 4.f - float(uSheetPos.y))) * card_size;
+    iUV = (aUV + vec2(float(uSheetPos.x), float(uSheetPos.y))) * card_size;
     iPos = aPos;
     gl_Position = uProj * uView * uModel * vec4(aPos, 0.f, 1.0f);
     // gl_Position = uView * uModel * vec4(aPos, 0.f, 1.0f);
