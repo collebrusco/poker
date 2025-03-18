@@ -84,3 +84,10 @@ void CardRenderer::draw_card_at(Card const& card, float x, float y, float r) {
     sync_to_card(card); draw_at(x, y, r);
 }
 
+void DeckRenderer::draw(Deck const &deck, float x, float y, float spread, bool facedown) {
+    size_t i = 0;
+    for (auto card : deck) {
+        CardRenderer::draw_card_at(card, x - (spread/2) + (((float)i * spread) / (float)deck.size()), y, 0.);
+        i++;
+    }
+}

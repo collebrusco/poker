@@ -28,4 +28,8 @@ public:
 
 };
 
+struct DeckRenderer {
+    static void draw(Deck const& deck, float x, float y, float spread, bool facedown = false);
+};
+
 #endif /* RENDERING_H */

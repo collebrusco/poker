@@ -96,6 +96,10 @@ static inline hand_e better_hand(hand_e a, hand_e b) {
 struct Deck : private std::vector<Card> {
     Deck(bool empty = false);
     size_t size() const;
+    std::vector<Card>::iterator begin();
+    std::vector<Card>::iterator end();
+    std::vector<Card>::const_iterator begin() const;
+    std::vector<Card>::const_iterator end() const;
     static Deck new_empty();
     static Deck new_deck();
     static Deck new_shuffled(uint32_t N = 2048);

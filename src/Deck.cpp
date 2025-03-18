@@ -70,6 +70,22 @@ Deck::Deck(bool empty) {
 
 size_t Deck::size() const {return this->std::vector<Card>::size();}
 
+std::vector<Card>::iterator Deck::begin() {
+    return this->std::vector<Card>::begin();
+}
+
+std::vector<Card>::iterator Deck::end() {
+    return this->std::vector<Card>::end();
+}
+
+std::vector<Card>::const_iterator Deck::begin() const {
+    return this->std::vector<Card>::cbegin();
+}
+
+std::vector<Card>::const_iterator Deck::end() const {
+    return this->std::vector<Card>::cend();
+}
+
 Deck Deck::new_empty() {return Deck(true);}
 
 Deck Deck::new_deck() {return Deck();}

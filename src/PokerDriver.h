@@ -61,7 +61,8 @@ void PokerDriver::user_render() {
     gl.clear();
 
     CardRenderer::sync_to_camera(camera);
-    CardRenderer::draw_card_at(card.card, card.pos.x, card.pos.y);
+    // CardRenderer::draw_card_at(card.card, card.pos.x, card.pos.y);
+    DeckRenderer::draw(deck, card.pos.x, card.pos.y, 5);
 }
 
 void PokerDriver::user_destroy() {
