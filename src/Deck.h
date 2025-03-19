@@ -65,6 +65,7 @@ const char* suit_name(suit_e suit);
 struct Card {
     rank_e rank;
     suit_e suit;
+    mutable bool mark;
     void print();
 };
 
@@ -111,6 +112,7 @@ struct Deck : private std::vector<Card> {
 
     void swap(size_t a, size_t b);
     Card remove(size_t i);
+    size_t find(Card card) const;
     void cut();
     void shuffle(uint32_t N = 2048);
     Card peek() const;
@@ -123,6 +125,10 @@ struct Deck : private std::vector<Card> {
     bool contains(Card card) const;
     bool is_subset(Deck const& other) const;
     Deck& operator+=(Deck const& other);
+    Deck& operator-=(Deck const& other);
+    Deck get_marked() const;
+    void mark_all(bool mark = true) const;
+    void mark(size_t i, bool mark = true) const;
 
     hand_e find_best_hand() const;
 

@@ -63,7 +63,7 @@ Deck::Deck(bool empty) {
     if (empty) return;
     for (suit_e s = SUIT_HEARTS; s < SUIT_LAST; s = suit_next(s)) {
         for (rank_e r = RANK_2; r < RANK_LAST; r = rank_next(r)) {
-            this->push_back(Card{r,s});
+            this->push_back(Card{r,s,false});
         }
     }
 }
@@ -114,6 +114,13 @@ Card Deck::remove(size_t i) {
     return res;
 }
 
+size_t Deck::find(Card card) const {
+    for (size_t i = 0; i < this->size(); i++) {
+        if (this->at(i) == card) return i;
+    }
+    return -1;
+}
+
 void Deck::cut() {
     if (this->size() < 2) return;
     const size_t split = this->size() / 2;
@@ -135,7 +142,7 @@ Card Deck::peek() const {
 Card Deck::draw_random() {
     size_t idx = rand_int(0, this->size()-1);
     if (!(idx < this->size())) {
-        return Card{RANK_LAST,SUIT_LAST};
+        return Card{RANK_LAST,SUIT_LAST,false};
     }
     Card res = this->at(idx);
     this->erase(std::next(this->begin(), idx));
@@ -147,7 +154,7 @@ void Deck::add(Card card) {
 }
 
 void Deck::add(rank_e rank, suit_e suit) {
-    this->add(Card{rank, suit});
+    this->add(Card{rank, suit, false});
 }
 
 void Deck::shuffle(uint32_t N) {
@@ -187,6 +194,34 @@ Deck &Deck::operator+=(Deck const &other) {
         this->add(c);
     }
     return *this;
+}
+
+Deck &Deck::operator-=(Deck const &other) {
+    for (auto c : other) {
+        size_t idx = this->find(c);
+        if (idx < this->size()) this->remove(idx);
+    }
+    return *this;
+}
+
+Deck Deck::get_marked() const {
+    Deck res = Deck::new_empty();
+    for (auto card : *this) {
+        if (card.mark) {
+            res.add(card);
+        }
+    }
+    return res;
+}
+
+void Deck::mark_all(bool mk) const {
+    for (auto& card : *this) {
+        card.mark = mk;
+    }
+}
+
+void Deck::mark(size_t i, bool mk) const {
+    this->at(i).mark = mk;
 }
 
 hand_e Deck::find_best_hand() const {
@@ -269,74 +304,74 @@ Deck Deck::new_hand(hand_e hand) {
 
     switch(hand) {
     case HAND_HIGHCARD:
-        res.push_back(Card{RANK_2, SUIT_CLUBS});
-        res.push_back(Card{RANK_4, SUIT_DIAMONDS});
-        res.push_back(Card{RANK_7, SUIT_HEARTS});
-        res.push_back(Card{RANK_10, SUIT_CLUBS});
-        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS});
+        res.push_back(Card{RANK_2, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_4, SUIT_DIAMONDS, false});
+        res.push_back(Card{RANK_7, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_10, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS, false});
         break;
     case HAND_PAIR:
-        res.push_back(Card{RANK_10, SUIT_CLUBS});
-        res.push_back(Card{RANK_4, SUIT_DIAMONDS});
-        res.push_back(Card{RANK_7, SUIT_HEARTS});
-        res.push_back(Card{RANK_10, SUIT_CLUBS});
-        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS});
+        res.push_back(Card{RANK_10, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_4, SUIT_DIAMONDS, false});
+        res.push_back(Card{RANK_7, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_10, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS, false});
         break;
     case HAND_2PAIR:
-        res.push_back(Card{RANK_2, SUIT_CLUBS});
-        res.push_back(Card{RANK_2, SUIT_DIAMONDS});
-        res.push_back(Card{RANK_QUEEN, SUIT_HEARTS});
-        res.push_back(Card{RANK_10, SUIT_CLUBS});
-        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS});
+        res.push_back(Card{RANK_2, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_2, SUIT_DIAMONDS, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_10, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS, false});
         break;
     case HAND_3OFAKIND:
-        res.push_back(Card{RANK_10, SUIT_CLUBS});
-        res.push_back(Card{RANK_10, SUIT_DIAMONDS});
-        res.push_back(Card{RANK_7, SUIT_HEARTS});
-        res.push_back(Card{RANK_10, SUIT_SPADES});
-        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS});
+        res.push_back(Card{RANK_10, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_10, SUIT_DIAMONDS, false});
+        res.push_back(Card{RANK_7, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_10, SUIT_SPADES, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS, false});
         break;
     case HAND_STRAIGHT:
-        res.push_back(Card{RANK_5, SUIT_CLUBS});
-        res.push_back(Card{RANK_6, SUIT_DIAMONDS});
-        res.push_back(Card{RANK_7, SUIT_HEARTS});
-        res.push_back(Card{RANK_8, SUIT_SPADES});
-        res.push_back(Card{RANK_9, SUIT_CLUBS});
+        res.push_back(Card{RANK_5, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_6, SUIT_DIAMONDS, false});
+        res.push_back(Card{RANK_7, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_8, SUIT_SPADES, false});
+        res.push_back(Card{RANK_9, SUIT_CLUBS, false});
         break;
     case HAND_FLUSH:
-        res.push_back(Card{RANK_10, SUIT_HEARTS});
-        res.push_back(Card{RANK_JACK, SUIT_HEARTS});
-        res.push_back(Card{RANK_7, SUIT_HEARTS});
-        res.push_back(Card{RANK_KING, SUIT_HEARTS});
-        res.push_back(Card{RANK_ACE, SUIT_HEARTS});
+        res.push_back(Card{RANK_10, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_JACK, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_7, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_KING, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_ACE, SUIT_HEARTS, false});
         break;
     case HAND_FULLHOUSE:
-        res.push_back(Card{RANK_10, SUIT_CLUBS});
-        res.push_back(Card{RANK_10, SUIT_DIAMONDS});
-        res.push_back(Card{RANK_QUEEN, SUIT_HEARTS});
-        res.push_back(Card{RANK_10, SUIT_SPADES});
-        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS});
+        res.push_back(Card{RANK_10, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_10, SUIT_DIAMONDS, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_10, SUIT_SPADES, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS, false});
         break;
     case HAND_4OFAKIND:
-        res.push_back(Card{RANK_10, SUIT_CLUBS});
-        res.push_back(Card{RANK_10, SUIT_DIAMONDS});
-        res.push_back(Card{RANK_10, SUIT_HEARTS});
-        res.push_back(Card{RANK_10, SUIT_SPADES});
-        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS});
+        res.push_back(Card{RANK_10, SUIT_CLUBS, false});
+        res.push_back(Card{RANK_10, SUIT_DIAMONDS, false});
+        res.push_back(Card{RANK_10, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_10, SUIT_SPADES, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_CLUBS, false});
         break;
     case HAND_STRAIGHT_FLUSH:
-        res.push_back(Card{RANK_9, SUIT_HEARTS});
-        res.push_back(Card{RANK_10, SUIT_HEARTS});
-        res.push_back(Card{RANK_JACK, SUIT_HEARTS});
-        res.push_back(Card{RANK_QUEEN, SUIT_HEARTS});
-        res.push_back(Card{RANK_KING, SUIT_HEARTS});
+        res.push_back(Card{RANK_9, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_10, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_JACK, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_KING, SUIT_HEARTS, false});
         break;
     case HAND_ROYAL_FLUSH:
-        res.push_back(Card{RANK_10, SUIT_HEARTS});
-        res.push_back(Card{RANK_JACK, SUIT_HEARTS});
-        res.push_back(Card{RANK_QUEEN, SUIT_HEARTS});
-        res.push_back(Card{RANK_KING, SUIT_HEARTS});
-        res.push_back(Card{RANK_ACE, SUIT_HEARTS});
+        res.push_back(Card{RANK_10, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_JACK, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_QUEEN, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_KING, SUIT_HEARTS, false});
+        res.push_back(Card{RANK_ACE, SUIT_HEARTS, false});
         break;
     default:
         break;

@@ -66,6 +66,9 @@ struct PlayerList : public std::vector<PokerPlayer> {
     }
     bool any_in() {return num_in() > 0;}
     PokerPlayer* one_in() {PokerPlayer* res; size_t ni = num_in(&res); return ni == 1 ? res : 0;}
+
+    PokerPlayer& get(size_t idx) {assert(idx < this->size() && "oob player get"); return this->at(idx);}
+    PokerPlayer const& get(size_t idx) const {assert(idx < this->size() && "oob player get"); return this->at(idx);}
     PokerPlayer* next() {
         PokerPlayer* res = &this->at(turn);
         turn = (turn + 1) % this->size();
@@ -94,58 +97,64 @@ struct PokerState {
 };
 
 struct PokerBetAction {
-    PokerBetAction(PokerPlayer* slf) : self(*slf) {}
+    PokerBetAction(size_t slf) : self(slf) {}
     virtual void perform(PokerState& game) = 0;
 protected:
-    PokerPlayer& self;
+    size_t self;
 };
 struct CheckAction : public PokerBetAction {
-    CheckAction(PokerPlayer* self) : PokerBetAction(self) {}
+    CheckAction(size_t self) : PokerBetAction(self) {}
     virtual void perform(PokerState& game) override final {
-        assert(game.bet == self.bet && "can't check if your bet doesn't match, call raise or fold");
+        assert(game.bet == game.players.get(self).bet && "can't check if your bet doesn't match, call raise or fold");
     }
 };
 struct CallAction : public PokerBetAction {
-    CallAction(PokerPlayer* self) : PokerBetAction(self) {}
+    CallAction(size_t self) : PokerBetAction(self) {}
     virtual void perform(PokerState& game) override final {
         assert(game.bet > 0. && "call with no bet open");
-        assert(game.bet > self.bet && "call w no bet increase, check instead");
-        Money cash = self.charge_to_bet(game.bet);
+        assert(game.bet > game.players.get(self).bet && "call w no bet increase, check instead");
+        Money cash = game.players.get(self).charge_to_bet(game.bet);
         game.pot += cash;
     }
 };
 struct RaiseAction : public PokerBetAction {
     Money bet;
-    RaiseAction(PokerPlayer* self, Money b) : PokerBetAction(self), bet(b) {}
+    RaiseAction(size_t self, Money b) : PokerBetAction(self), bet(b) {}
     virtual void perform(PokerState& game) override final {
         assert(bet > game.bet && "raise invalid");
-        Money cash = self.charge_to_bet(bet);
+        Money cash = game.players.get(self).charge_to_bet(bet);
         game.pot += cash;
         game.bet = bet;
     }
 };
 struct FoldAction : public PokerBetAction {
-    FoldAction(PokerPlayer* self) : PokerBetAction(self) {}
+    FoldAction(size_t self) : PokerBetAction(self) {}
     virtual void perform(PokerState& game) override final {
-        self.in = false;
+        game.players.get(self).in = false;
     }
 };
 struct AllInAction : public PokerBetAction {
-    AllInAction(PokerPlayer* self) : PokerBetAction(self) {}
+    AllInAction(size_t self) : PokerBetAction(self) {}
     virtual void perform(PokerState& game) override final {
-        Money cash = self.charge_all();
+        Money cash = game.players.get(self).charge_all();
         game.pot += cash;
-        game.bet = (self.bet > game.bet) ? self.bet : game.bet;
+        game.bet = (game.players.get(self).bet > game.bet) ? game.players.get(self).bet : game.bet;
     }
 };
 
 
 struct PokerPlayerController {
-    virtual PokerBetAction* bet(PokerState const& game, PokerPlayer& player) = 0;
-    virtual Deck discard(PokerState const& game, PokerPlayer& player) = 0;
-    virtual Deck show(PokerState const& game, PokerPlayer& player) {
+    typedef struct Result {enum {CONTROL_OK = 0, CONTROL_BUSY} code;} DiscardResult, ShowResult;
+    struct BetResult : public Result {
+        BetResult(PokerBetAction* act) : action(act) {code = act == 0 ? CONTROL_BUSY : CONTROL_OK;}
+        PokerBetAction* action;
+    };
+    virtual BetResult bet(PokerState const& game, PokerPlayer const& player) = 0;
+    virtual DiscardResult discard(PokerState const& game, PokerPlayer const& player) = 0;
+    virtual ShowResult show(PokerState const& game, PokerPlayer const& player) {
         assert(player.hand.size() == 5 && "if a players hand is bigger than a poker hand, you must override show() to select what cards to play");
-        return player.hand;
+        player.hand.mark_all();
+        return Result{Result::CONTROL_OK};
     }
 };
 
@@ -171,7 +180,7 @@ struct PokerGame {
         PokerPlayer* const first = state.players.next();
         PokerPlayer* player = first;
         do {
-            PokerBetAction* action = player->controller->bet(state, *player);
+            PokerBetAction* action = player->controller->bet(state, *player).action;
             action->perform(state);
             delete action;
             if (state.bet > 0.) break;
@@ -181,7 +190,7 @@ struct PokerGame {
         } while (player != first);
 
         while ((player = state.players.next_under(state.bet))) {
-            PokerBetAction* action = player->controller->bet(state, *player);
+            PokerBetAction* action = player->controller->bet(state, *player).action;
             action->perform(state);
             delete action;
             if (PokerPlayer* winner = state.players.one_in())
@@ -192,7 +201,9 @@ struct PokerGame {
     
     void discard() {
         for (PokerPlayer& p : state.players) {
-            Deck disc = p.controller->discard(state, p);
+            p.controller->discard(state, p);
+            Deck disc = p.hand.get_marked();
+            p.hand -= disc;
             for (auto c : disc) { (void)c;
                 p.hand.add(state.deck.draw());
             }
@@ -204,7 +215,8 @@ struct PokerGame {
         PokerPlayer* bestp = 0;
         for (PokerPlayer& p : state.players) {
             if (!p.in) continue;
-            Deck d = p.controller->show(state, p);
+            p.controller->show(state, p);
+            Deck d = p.hand.get_marked();
             assert(d.is_subset(p.hand) && "must show a subset of your hand, no cheating");
             hand_e hand = d.find_best_hand();
             if (hand > best) {
@@ -233,7 +245,7 @@ struct PokerGame {
 
 struct ConsolePPC : public PokerPlayerController {
     ConsolePPC() : PokerPlayerController() {}
-    virtual PokerBetAction* bet(PokerState const& game, PokerPlayer& player) override final {
+    virtual BetResult bet(PokerState const& game, PokerPlayer const& player) override final {
         std::cout << "Player " << player.index << ", time to bet. here is your hand:\n";
         player.hand.print();
         if (game.bet == player.bet) {
@@ -243,31 +255,31 @@ struct ConsolePPC : public PokerPlayerController {
         }
         std::string inp; std::cin >> inp;
         if (inp == "check") {
-            return new CheckAction(&player);
+            return new CheckAction(player.index);
         } else if (inp == "call") {
-            return new CallAction(&player);
+            return new CallAction(player.index);
         } else if (inp == "fold") {
-            return new FoldAction(&player);
+            return new FoldAction(player.index);
         } else if (inp == "bet") {
             Money amt; std::cin >> amt;
-            return new RaiseAction(&player, player.bet + amt);
+            return new RaiseAction(player.index, player.bet + amt);
         }
-        return new FoldAction(&player);
+        return new FoldAction(player.index);
     }
-    virtual Deck discard(PokerState const& game, PokerPlayer& player) override final {
+    virtual DiscardResult discard(PokerState const& game, PokerPlayer const& player) override final {
         std::cout << "Player " << player.index << ", time to discard. ";
         size_t i;
-        Deck res(true);
+        Deck display = player.hand;
         do {
             std::cout << "here is your hand:\n";
-            player.hand.print();
+            display.print();
             std::cout << "enter an idx to discard (0 thru n-1 top to bot) or 42 to stop: ";
             std::cin >> i;
             if (i == 42) break;
-            Card pull = player.hand.remove(i);
-            res.add(pull);
+            Card pull = display.remove(i);
+            player.hand.mark(player.hand.find(pull));
         } while (1);
-        return res;
+        return DiscardResult{Result::CONTROL_OK};
     }
 };
 
