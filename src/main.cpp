@@ -54,16 +54,17 @@ struct PlayerList : public std::vector<PokerPlayer> {
     }
     void set_turn(size_t t) {turn = t;}
     size_t get_turn() {return turn;}
-    PokerPlayer& next() {
+    PokerPlayer* next() {
+        PokerPlayer* res = &this->at(turn);
         turn = (turn + 1) % this->size();
-        return this->at(turn);
+        return res;
     }
     PokerPlayer* next_under(const Money call) {
-        PokerPlayer* const first = &next();
+        PokerPlayer* const first = next();
         PokerPlayer* n = first;
         do {
             if (n->bet < call) return n;
-            n = &next();
+            n = next();
         } while (n != first);
         return 0;
     }
@@ -145,14 +146,14 @@ struct PokerGame {
     }
     
     void bet() {
-        PokerPlayer* const first = &state.players.next();
+        PokerPlayer* const first = state.players.next();
         PokerPlayer* player = first;
         do {
             PokerBetAction* action = player->controller->bet(state, *player);
             action->perform(state);
             delete action;
             if (state.bet > 0.) break;
-            player = &state.players.next();
+            player = state.players.next();
         } while (player != first);
 
         while ((player = state.players.next_under(state.bet))) {
