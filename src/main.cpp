@@ -128,12 +128,9 @@ struct AllInAction : public PokerBetAction {
 
 
 struct PokerPlayerController {
-    PokerPlayerController(size_t i) : playeri(i) {}
-    virtual PokerBetAction* bet(PokerState const& game) = 0;
-    virtual Deck discard(PokerState const& game) = 0;
-    virtual Deck show(PokerState const& game) = 0;
-protected:
-    size_t playeri;
+    virtual PokerBetAction* bet(PokerState const& game, PokerPlayer& player) = 0;
+    virtual Deck discard(PokerState const& game, PokerPlayer& player) = 0;
+    virtual Deck show(PokerState const& game, PokerPlayer& player) = 0;
 };
 
 struct PokerGame {
@@ -151,7 +148,7 @@ struct PokerGame {
         PokerPlayer* const first = &state.players.next();
         PokerPlayer* player = first;
         do {
-            PokerBetAction* action = player->controller->bet(state);
+            PokerBetAction* action = player->controller->bet(state, *player);
             action->perform(state);
             delete action;
             if (state.bet > 0.) break;
@@ -159,7 +156,7 @@ struct PokerGame {
         } while (player != first);
 
         while ((player = state.players.next_under(state.bet))) {
-            PokerBetAction* action = player->controller->bet(state);
+            PokerBetAction* action = player->controller->bet(state, *player);
             action->perform(state);
             delete action;
         }
@@ -168,7 +165,7 @@ struct PokerGame {
     
     void discard() {
         for (PokerPlayer& p : state.players) {
-            Deck disc = p.controller->discard(state);
+            Deck disc = p.controller->discard(state, p);
             for (auto c : disc) { (void)c;
                 p.hand.add(state.deck.draw());
             }
@@ -203,9 +200,8 @@ struct PokerGame {
 
 
 struct ConsolePPC : public PokerPlayerController {
-    ConsolePPC(size_t player) : PokerPlayerController(player) {}
-    virtual PokerBetAction* bet(PokerState const& game) override final {
-        PokerPlayer& player = game.players.at(playeri);
+    ConsolePPC() : PokerPlayerController() {}
+    virtual PokerBetAction* bet(PokerState const& game, PokerPlayer& player) override final {
         std::cout << "Player " << player.index << ", time to bet. here is your hand:\n";
         player.hand.print();
         if (game.bet == player.bet) {
@@ -226,8 +222,7 @@ struct ConsolePPC : public PokerPlayerController {
         }
         return new FoldAction(&player);
     }
-    virtual Deck discard(PokerState const& game) override final {
-        PokerPlayer& player = game.players.at(playeri);
+    virtual Deck discard(PokerState const& game, PokerPlayer& player) override final {
         std::cout << "Player " << player.index << ", time to discard. ";
         size_t i;
         Deck res(true);
@@ -242,8 +237,7 @@ struct ConsolePPC : public PokerPlayerController {
         } while (1);
         return res;
     }
-    virtual Deck show(PokerState const& game) override final {
-        PokerPlayer& player = game.players.at(playeri);
+    virtual Deck show(PokerState const& game, PokerPlayer& player) override final {
         return player.hand;
     }
 };
@@ -255,9 +249,9 @@ int main() {
     
     PlayerList players;
 
-    players.add(new ConsolePPC(players.size()));
-    players.add(new ConsolePPC(players.size()));
-    players.add(new ConsolePPC(players.size()));
+    players.add(new ConsolePPC());
+    players.add(new ConsolePPC());
+    players.add(new ConsolePPC());
 
     PokerGame game(players);
 
