@@ -27,6 +27,21 @@ struct PokerPlayer {
     Money bet;
     Deck hand;
     bool in;
+    Money charge(Money amt) {stack -= amt; assert(stack > 0. && "overcharged player"); return amt;}
+    Money charge_to_bet(Money newbet) {
+        Money diff = charge(newbet - this->bet);
+        this->bet = newbet;
+        return diff;
+    }
+    Money charge_all() {
+        Money cash = this->charge(stack);
+        bet += cash;
+        return cash;
+    }
+    void award(Money payout) {stack += payout;}
+    void end_round() {
+        bet = 0.f; in = true; hand = Deck::new_empty();
+    }
 };
 
 struct PlayerList : public std::vector<PokerPlayer> {
@@ -53,9 +68,10 @@ private:
 };
 
 struct PokerState {
-    PokerState(PlayerList& incoming) : state(PSTATE_DEAL), deck(Deck::new_shuffled()), pot(0.), players(incoming) {}
+    PokerState(PlayerList& incoming) : state(PSTATE_DEAL), deck(Deck::new_shuffled()), bet(0.), pot(0.), players(incoming) {}
     pokerstate_e state;
     Deck deck;
+    Money bet;
     Money pot;
     PlayerList& players;
 };
@@ -67,24 +83,43 @@ protected:
     PokerPlayer& self;
 };
 struct CheckAction : public PokerBetAction {
-    CheckAction(PokerPlayer* slf);
-    virtual void perform(PokerState& game) override final;
+    CheckAction(PokerPlayer* self) : PokerBetAction(self) {}
+    virtual void perform(PokerState& game) override final {
+        assert(game.bet == self.bet && "can't check if your bet doesn't match, call raise or fold");
+    }
 };
 struct CallAction : public PokerBetAction {
-    CallAction(PokerPlayer* slf);
-    virtual void perform(PokerState& game) override final;
+    CallAction(PokerPlayer* self) : PokerBetAction(self) {}
+    virtual void perform(PokerState& game) override final {
+        assert(game.bet > 0. && "call with no bet open");
+        assert(game.bet > self.bet && "call w no bet increase, check instead");
+        Money cash = self.charge_to_bet(game.bet);
+        game.pot += cash;
+    }
 };
 struct RaiseAction : public PokerBetAction {
-    RaiseAction(PokerPlayer* slf, Money bet);
-    virtual void perform(PokerState& game) override final;
+    Money bet;
+    RaiseAction(PokerPlayer* self, Money b) : PokerBetAction(self), bet(b) {}
+    virtual void perform(PokerState& game) override final {
+        assert(bet > game.bet && "raise invalid");
+        Money cash = self.charge_to_bet(bet);
+        game.pot += cash;
+        game.bet = bet;
+    }
 };
 struct FoldAction : public PokerBetAction {
-    FoldAction(PokerPlayer* slf);
-    virtual void perform(PokerState& game) override final;
+    FoldAction(PokerPlayer* self) : PokerBetAction(self) {}
+    virtual void perform(PokerState& game) override final {
+        self.in = false;
+    }
 };
 struct AllInAction : public PokerBetAction {
-    AllInAction(PokerPlayer* slf);
-    virtual void perform(PokerState& game) override final;
+    AllInAction(PokerPlayer* self) : PokerBetAction(self) {}
+    virtual void perform(PokerState& game) override final {
+        Money cash = self.charge_all();
+        game.pot += cash;
+        game.bet = (self.bet > game.bet) ? self.bet : game.bet;
+    }
 };
 
 
@@ -113,11 +148,11 @@ struct PokerGame {
         do {
             PokerBetAction* action = player->controller->bet(state);
             action->perform(state);
-            if (state.pot > 0.) break;
+            if (state.bet > 0.) break;
             player = &state.players.next();
         } while (player != first);
 
-        while ((player = state.players.next_under(state.pot))) {
+        while ((player = state.players.next_under(state.bet))) {
             PokerBetAction* action = player->controller->bet(state);
             action->perform(state);
         }
