@@ -165,6 +165,29 @@ Deck Deck::deal(size_t const N) {
     return hand;
 }
 
+bool Deck::contains(Card card) const {
+    for (auto c : *this) {
+        if (card == c) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Deck::is_subset(Deck const &other) const
+{
+    for (auto c : *this) {
+        if (!other.contains(c)) return false;
+    }
+    return true;
+}
+
+Deck &Deck::operator+=(Deck const &other) {
+    for (auto c : other) {
+        this->add(c);
+    }
+}
+
 hand_e Deck::find_best_hand() const {
     hand_e power = HAND_HIGHCARD;
 

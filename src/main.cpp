@@ -53,7 +53,19 @@ struct PlayerList : public std::vector<PokerPlayer> {
         this->push_back(PokerPlayer{this->size(), player, buyin, 0., Deck::new_empty(), true});
     }
     void set_turn(size_t t) {turn = t;}
-    size_t get_turn() {return turn;}
+    size_t get_turn() const {return turn;}
+    size_t num_in(PokerPlayer** one = 0) {
+        size_t r = 0; 
+        for (auto& p : *this) {
+            if (p.in) {
+                r++;
+                if (one) *one = &p;
+            }
+        } 
+        return r;
+    }
+    bool any_in() {return num_in() > 0;}
+    PokerPlayer* one_in() {PokerPlayer* res; size_t ni = num_in(&res); return ni == 1 ? res : 0;}
     PokerPlayer* next() {
         PokerPlayer* res = &this->at(turn);
         turn = (turn + 1) % this->size();
@@ -131,12 +143,21 @@ struct AllInAction : public PokerBetAction {
 struct PokerPlayerController {
     virtual PokerBetAction* bet(PokerState const& game, PokerPlayer& player) = 0;
     virtual Deck discard(PokerState const& game, PokerPlayer& player) = 0;
-    virtual Deck show(PokerState const& game, PokerPlayer& player) = 0;
+    virtual Deck show(PokerState const& game, PokerPlayer& player) {
+        assert(player.hand.size() == 5 && "if a players hand is bigger than a poker hand, you must override show() to select what cards to play");
+        return player.hand;
+    }
 };
+
 
 struct PokerGame {
     PokerGame(PlayerList& incoming) : state(incoming) {}
     PokerState state;
+
+    struct Result {
+        PokerPlayer* winner;
+        Money payout;
+    };
 
     void deal() {
         for (PokerPlayer& p : state.players) {
@@ -173,32 +194,35 @@ struct PokerGame {
         }
     }
     
-    void show() {
+    Result show() {
         hand_e best = HAND_HIGHCARD;
-        size_t besti = -1;
+        PokerPlayer* bestp = 0;
         for (PokerPlayer& p : state.players) {
-            hand_e hand = p.hand.find_best_hand();
+            if (!p.in) continue;
+            Deck d = p.controller->show(state, p);
+            assert(d.is_subset(p.hand) && "must show a subset of your hand, no cheating");
+            hand_e hand = d.find_best_hand();
             if (hand > best) {
-                best = hand; besti = p.index;
+                best = hand; bestp = &p;
             }
             lg("player %lu had %s\n", p.index, hand_name(hand));
         }
-        lg("\nPLAYER %lu WINS $%.2Lf!!!\n", besti, state.pot);
+        lg("\nPLAYER %lu WINS $%.2Lf!!!\n", bestp->index, state.pot);
+        Result res{bestp, state.pot};
+        return res;
     }
     
 
-    void run(size_t rounds = 1) {
+    Result run(size_t rounds = 1) {
         deal();
         while (1) {
             bet();
             if (!(rounds--)) break;
             discard();
         }
-        show();
+        return show();
     }
 };
-
-
 
 struct ConsolePPC : public PokerPlayerController {
     ConsolePPC() : PokerPlayerController() {}
@@ -237,9 +261,6 @@ struct ConsolePPC : public PokerPlayerController {
             res.add(pull);
         } while (1);
         return res;
-    }
-    virtual Deck show(PokerState const& game, PokerPlayer& player) override final {
-        return player.hand;
     }
 };
 

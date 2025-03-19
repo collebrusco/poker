@@ -68,6 +68,10 @@ struct Card {
     void print();
 };
 
+bool inline operator==(Card const& a, Card const& b) {
+    return a.rank == b.rank && a.suit == b.suit;
+}
+
 typedef enum {
     HAND_HIGHCARD = 0,
     HAND_PAIR,
@@ -115,6 +119,10 @@ struct Deck : private std::vector<Card> {
     void add(Card card);
     void add(rank_e rank, suit_e suit);
     Deck deal(size_t const N = 5);
+
+    bool contains(Card card) const;
+    bool is_subset(Deck const& other) const;
+    Deck& operator+=(Deck const& other);
 
     hand_e find_best_hand() const;
 
