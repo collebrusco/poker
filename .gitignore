@@ -2,3 +2,5 @@ poker
 .vscode
 build
 
+**/*.DS_Store
+
