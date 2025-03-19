@@ -186,6 +186,7 @@ Deck &Deck::operator+=(Deck const &other) {
     for (auto c : other) {
         this->add(c);
     }
+    return *this;
 }
 
 hand_e Deck::find_best_hand() const {

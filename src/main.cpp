@@ -160,13 +160,14 @@ struct PokerGame {
     };
 
     void deal() {
+        assert(state.deck.size() == 52 && "deck not full");
         for (PokerPlayer& p : state.players) {
             assert(p.hand.size() == 0 && "players need to be reset first");
             p.hand = state.deck.deal(5);
         }
     }
     
-    void bet() {
+    PokerPlayer* bet() {
         PokerPlayer* const first = state.players.next();
         PokerPlayer* player = first;
         do {
@@ -174,6 +175,8 @@ struct PokerGame {
             action->perform(state);
             delete action;
             if (state.bet > 0.) break;
+            if (PokerPlayer* winner = state.players.one_in())
+                return winner;
             player = state.players.next();
         } while (player != first);
 
@@ -181,8 +184,10 @@ struct PokerGame {
             PokerBetAction* action = player->controller->bet(state, *player);
             action->perform(state);
             delete action;
+            if (PokerPlayer* winner = state.players.one_in())
+                return winner;
         }
-
+        return 0;
     }
     
     void discard() {
@@ -214,9 +219,11 @@ struct PokerGame {
     
 
     Result run(size_t rounds = 1) {
+        PokerPlayer* winner;
         deal();
         while (1) {
-            bet();
+            winner = bet();
+            if (winner) break;
             if (!(rounds--)) break;
             discard();
         }
