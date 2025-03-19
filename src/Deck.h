@@ -106,6 +106,7 @@ struct Deck : private std::vector<Card> {
     static Deck new_hand(hand_e hand);
 
     void swap(size_t a, size_t b);
+    Card remove(size_t i);
     void cut();
     void shuffle(uint32_t N = 2048);
     Card peek() const;

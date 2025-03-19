@@ -104,6 +104,16 @@ void Deck::swap(size_t a, size_t b) {
     (*this)[b] = t;
 }
 
+Card Deck::remove(size_t i) {
+    assert(i < this->size());
+    Card res = this->at(i);
+    for (size_t j = i; j < this->size() - 1; j++) {
+        this->swap(j, j+1);
+    }
+    this->pop_back();
+    return res;
+}
+
 void Deck::cut() {
     if (this->size() < 2) return;
     const size_t split = this->size() / 2;

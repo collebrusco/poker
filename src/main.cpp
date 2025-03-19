@@ -45,8 +45,12 @@ struct PokerPlayer {
 };
 
 struct PlayerList : public std::vector<PokerPlayer> {
-    void add(PokerPlayerController* player) {
-        this->push_back(PokerPlayer{this->size(), player, 0., 0., Deck::new_empty(), true});
+    PlayerList() {turn = 0;}
+    ~PlayerList() {
+        for (auto& p : *this) delete p.controller;
+    }
+    void add(PokerPlayerController* player, Money buyin = 10.) {
+        this->push_back(PokerPlayer{this->size(), player, buyin, 0., Deck::new_empty(), true});
     }
     void set_turn(size_t t) {turn = t;}
     size_t get_turn() {return turn;}
@@ -124,12 +128,12 @@ struct AllInAction : public PokerBetAction {
 
 
 struct PokerPlayerController {
-    PokerPlayerController(PokerPlayer* player) : player(*player) {}
+    PokerPlayerController(size_t i) : playeri(i) {}
     virtual PokerBetAction* bet(PokerState const& game) = 0;
     virtual Deck discard(PokerState const& game) = 0;
     virtual Deck show(PokerState const& game) = 0;
 protected:
-    PokerPlayer& player;
+    size_t playeri;
 };
 
 struct PokerGame {
@@ -138,6 +142,7 @@ struct PokerGame {
 
     void deal() {
         for (PokerPlayer& p : state.players) {
+            assert(p.hand.size() == 0 && "players need to be reset first");
             p.hand = state.deck.deal(5);
         }
     }
@@ -148,6 +153,7 @@ struct PokerGame {
         do {
             PokerBetAction* action = player->controller->bet(state);
             action->perform(state);
+            delete action;
             if (state.bet > 0.) break;
             player = &state.players.next();
         } while (player != first);
@@ -155,6 +161,7 @@ struct PokerGame {
         while ((player = state.players.next_under(state.bet))) {
             PokerBetAction* action = player->controller->bet(state);
             action->perform(state);
+            delete action;
         }
 
     }
@@ -195,13 +202,66 @@ struct PokerGame {
 
 
 
-
+struct ConsolePPC : public PokerPlayerController {
+    ConsolePPC(size_t player) : PokerPlayerController(player) {}
+    virtual PokerBetAction* bet(PokerState const& game) override final {
+        PokerPlayer& player = game.players.at(playeri);
+        std::cout << "Player " << player.index << ", time to bet. here is your hand:\n";
+        player.hand.print();
+        if (game.bet == player.bet) {
+            std::cout << "you can 'check' or 'bet <n>' to open / raise. ";
+        } else if (game.bet > player.bet) {
+            std::cout << "you can 'call' (you owe " << game.bet - player.bet << "), 'fold' or raise with 'bet <n>'. ";
+        }
+        std::string inp; std::cin >> inp;
+        if (inp == "check") {
+            return new CheckAction(&player);
+        } else if (inp == "call") {
+            return new CallAction(&player);
+        } else if (inp == "fold") {
+            return new FoldAction(&player);
+        } else if (inp == "bet") {
+            Money amt; std::cin >> amt;
+            return new RaiseAction(&player, player.bet + amt);
+        }
+        return new FoldAction(&player);
+    }
+    virtual Deck discard(PokerState const& game) override final {
+        PokerPlayer& player = game.players.at(playeri);
+        std::cout << "Player " << player.index << ", time to discard. ";
+        size_t i;
+        Deck res(true);
+        do {
+            std::cout << "here is your hand:\n";
+            player.hand.print();
+            std::cout << "enter an idx to discard (0 thru n-1 top to bot) or 42 to stop: ";
+            std::cin >> i;
+            if (i == 42) break;
+            Card pull = player.hand.remove(i);
+            res.add(pull);
+        } while (1);
+        return res;
+    }
+    virtual Deck show(PokerState const& game) override final {
+        PokerPlayer& player = game.players.at(playeri);
+        return player.hand;
+    }
+};
 
 
 
 
 int main() {
     
+    PlayerList players;
+
+    players.add(new ConsolePPC(players.size()));
+    players.add(new ConsolePPC(players.size()));
+    players.add(new ConsolePPC(players.size()));
+
+    PokerGame game(players);
+
+    game.run();
 
     return 0;
 }
