@@ -10,14 +10,6 @@
 
 typedef long double Money;
 
-typedef enum {
-    PSTATE_DEAL = 0,
-    PSTATE_BET_CHECK,
-    PSTATE_BET_OPEN,
-    PSTATE_DISCARD,
-    PSTATE_SHOW,
-} pokerstate_e;
-
 struct PokerPlayerController;
 
 struct PokerPlayer {
@@ -86,6 +78,14 @@ struct PlayerList : public std::vector<PokerPlayer> {
 private:
     size_t turn;
 };
+
+typedef enum {
+    PSTATE_DEAL = 0,
+    PSTATE_BET_CHECK,
+    PSTATE_BET_OPEN,
+    PSTATE_DISCARD,
+    PSTATE_SHOW,
+} pokerstate_e;
 
 struct PokerState {
     PokerState(PlayerList& incoming) : state(PSTATE_DEAL), deck(Deck::new_shuffled()), bet(0.), pot(0.), players(incoming) {}
@@ -217,7 +217,6 @@ struct PokerGame {
             if (!p.in) continue;
             p.controller->show(state, p);
             Deck d = p.hand.get_marked();
-            assert(d.is_subset(p.hand) && "must show a subset of your hand, no cheating");
             hand_e hand = d.find_best_hand();
             if (hand > best) {
                 best = hand; bestp = &p;
