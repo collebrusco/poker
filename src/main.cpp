@@ -37,7 +37,7 @@ struct PokerPlayer {
 };
 
 struct PlayerList : public std::vector<PokerPlayer> {
-    PlayerList(size_t f = 0) {_first = turn = f;}
+    PlayerList(size_t f = 0) {_first = turn = f; bring_all_in();}
     ~PlayerList() {
         for (auto& p : *this) delete p.controller;
     }
@@ -61,21 +61,23 @@ struct PlayerList : public std::vector<PokerPlayer> {
     bool any_in() {return num_in() > 0;}
     PokerPlayer* one_in() {PokerPlayer* res; size_t ni = num_in(&res); return ni == 1 ? res : 0;}
     void reset() {turn = _first;}
+    void bring_all_in() {for (auto& p : *this) p.in = true;}
     PokerPlayer& get(size_t idx) {assert(idx < this->size() && "oob player get"); return this->at(idx);}
     PokerPlayer const& get(size_t idx) const {assert(idx < this->size() && "oob player get"); return this->at(idx);}
     PokerPlayer& cur() {return this->at(turn);}
     PokerPlayer& first() {return this->at(_first);}
     PokerPlayer* next() {
-        PokerPlayer* res = &this->at(turn);
-        turn = (turn + 1) % this->size();
-        return res;
+        do {
+            turn = (turn + 1) % this->size();
+        } while (!cur().in);
+        return &cur();
     }
     PokerPlayer* next_under(const Money call) {
-        PokerPlayer* const _first = next();
-        PokerPlayer* n = _first;
+        PokerPlayer* const _first = &cur();
+        PokerPlayer* n;
         do {
-            if (n->bet < call) return n;
             n = next();
+            if (n->bet < call) return n;
         } while (n != _first);
         return 0;
     }
@@ -202,7 +204,7 @@ private:
         state = BET_CHECK;
     }
     void next_PLAYER_RESET_DISC(pokerFSMinput_e input) {
-        state = BET_CHECK;
+        state = DISCARD;
     }
     void next_PLAYER_RESET_SHOW(pokerFSMinput_e input) {
         state = END;
@@ -335,7 +337,7 @@ struct PokerPlayerController {
 
 
 struct PokerGame : public PokerState {
-    PokerGame(PlayerList& incoming, size_t rounds = 1) : PokerState(incoming, rounds) {}
+    PokerGame(PlayerList& incoming, size_t rounds = 2) : PokerState(incoming, rounds) {}
 
     struct Result {
         enum {
@@ -345,10 +347,17 @@ struct PokerGame : public PokerState {
         } status;
         PokerPlayer* winner;
         Money payout;
+        void print() const {
+            if (status == END) {
+                printf("GAME OVER: PLAYER %lu WINS %.2Lf WITH A %s!\n", winner->index, payout, hand_name(winner->hand.find_best_hand()));
+            } else {
+                printf("game in progress, status %s\n", status == OK ? "OK" : "busy (waiting on a player)");
+            }
+        }
     } result{Result::OK, 0, 0.};
 
     void print() const {
-        printf("====STATE INFO====\n");
+        printf("\n\n====STATE INFO====\n");
         printf("state: %s; round: %lu; pot: $%.2Lf\n", this->get_name(), this->round, this->pot);
         printf("player %lu's turn (%lu first)\n", players.get_turn(), players.get_first());
         printf("they have %.2Lf bet now, %.2Lf in their stack, their hand:\n", players.cur().bet, players.cur().stack);
@@ -501,6 +510,8 @@ struct PokerGame : public PokerState {
 
 };
 
+
+
 struct ConsolePPC : public PokerPlayerController {
     ConsolePPC() : PokerPlayerController() {}
     virtual BetResult bet(PokerState const& game, PokerPlayer const& player) override final {
@@ -554,7 +565,8 @@ int main() {
 
     PokerGame game(players);
 
-    game.run();
+    game.run().print();
+
 
     return 0;
 }
@@ -567,69 +579,3 @@ int main() {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void test_interactive() {
-    Deck deck;
-
-    lg("before shuff:\n");
-    deck.print();
-    lg("\n\nafter shuff:\n");
-    deck.shuffle();
-    deck.print();
-    while (1) {
-        lg("draw? ");
-        std::cin.get();
-        auto hand = deck.deal(7);
-
-        nl();
-        lg("hand:\n");
-        hand.print();
-        lg("\n and the best hand there is %s\n", hand_name(hand.find_best_hand()));
-
-    }
-
-}
-
-void test_cut() {
-    Deck deck = Deck::new_deck();
-    deck.print();
-    nl();nl();
-    deck.cut();
-    deck.print();
-}
-
-void test_construct() {
-    {Deck d = Deck::new_deck(); tassert(d.size() == 52);}
-    {Deck d = Deck::new_shuffled(); tassert(d.size() == 52);}
-}
-
-void test_detection() {
-    for (hand_e hand = HAND_HIGHCARD; hand < HAND_LAST; hand = hand_next(hand)) {
-        Deck deck = Deck::new_hand(hand);
-        lg("hand (%s) is: \n", hand_name(hand));
-        deck.print(); 
-        tassert(deck.find_best_hand() == hand);
-        nl(); nl();
-    }
-}
