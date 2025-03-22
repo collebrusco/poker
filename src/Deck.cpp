@@ -214,6 +214,16 @@ Deck Deck::get_marked() const {
     return res;
 }
 
+Card Deck::get_highcard() const {
+    Card high = this->back();
+    for (auto c : *this) {
+        if (c.rank > high.rank) {
+            high = c;
+        }
+    }
+    return high;
+}
+
 void Deck::mark_all(bool mk) const {
     for (auto& card : *this) {
         card.mark = mk;

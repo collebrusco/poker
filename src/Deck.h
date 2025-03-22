@@ -127,6 +127,7 @@ struct Deck : private std::vector<Card> {
     Deck& operator+=(Deck const& other);
     Deck& operator-=(Deck const& other);
     Deck get_marked() const;
+    Card get_highcard() const;
     void mark_all(bool mark = true) const;
     void mark(size_t i, bool mark = true) const;
 

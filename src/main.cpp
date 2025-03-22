@@ -36,55 +36,6 @@ struct PokerPlayer {
     }
 };
 
-struct PlayerList : public std::vector<PokerPlayer> {
-    PlayerList(size_t f = 0) {_first = turn = f; bring_all_in();}
-    ~PlayerList() {
-        for (auto& p : *this) delete p.controller;
-    }
-    void add(PokerPlayerController* player, Money buyin = 10.) {
-        this->push_back(PokerPlayer{this->size(), player, buyin, 0., Deck::new_empty(), true});
-    }
-    void set_turn(size_t t) {turn = t;}
-    size_t get_turn() const {return turn;}
-    void set_first(size_t f) {_first = f;}
-    size_t get_first() const {return _first;}
-    size_t num_in(PokerPlayer** one = 0) {
-        size_t r = 0; 
-        for (auto& p : *this) {
-            if (p.in) {
-                r++;
-                if (one) *one = &p;
-            }
-        } 
-        return r;
-    }
-    bool any_in() {return num_in() > 0;}
-    PokerPlayer* one_in() {PokerPlayer* res; size_t ni = num_in(&res); return ni == 1 ? res : 0;}
-    void reset() {turn = _first;}
-    void bring_all_in() {for (auto& p : *this) p.in = true;}
-    PokerPlayer& get(size_t idx) {assert(idx < this->size() && "oob player get"); return this->at(idx);}
-    PokerPlayer const& get(size_t idx) const {assert(idx < this->size() && "oob player get"); return this->at(idx);}
-    PokerPlayer& cur() {return this->at(turn);}
-    PokerPlayer& first() {return this->at(_first);}
-    PokerPlayer* next() {
-        do {
-            turn = (turn + 1) % this->size();
-        } while (!cur().in);
-        return &cur();
-    }
-    PokerPlayer* next_under(const Money call) {
-        PokerPlayer* const _first = &cur();
-        PokerPlayer* n;
-        do {
-            n = next();
-            if (n->bet < call) return n;
-        } while (n != _first);
-        return 0;
-    }
-private:
-    size_t _first, turn;
-};
-
 typedef enum {
     INP_NONE            = 0x00,
     INP_ONE_LEFT        = 0x01,
@@ -207,7 +158,7 @@ private:
         state = DISCARD;
     }
     void next_PLAYER_RESET_SHOW(pokerFSMinput_e input) {
-        state = END;
+        state = SHOW;
     }
     void next_BET_CHECK(pokerFSMinput_e input) {
         bool check = test_FSMinput(input, INP_CHECK);
@@ -263,6 +214,55 @@ private:
     }
 };
 
+struct PlayerList : public std::vector<PokerPlayer> {
+    PlayerList(size_t f = 0) {_first = turn = f; bring_all_in();}
+    ~PlayerList() {
+        for (auto& p : *this) delete p.controller;
+    }
+    void add(PokerPlayerController* player, Money buyin = 10.) {
+        this->push_back(PokerPlayer{this->size(), player, buyin, 0., Deck::new_empty(), true});
+    }
+    void set_turn(size_t t) {turn = t;}
+    size_t get_turn() const {return turn;}
+    void set_first(size_t f) {_first = f;}
+    size_t get_first() const {return _first;}
+    size_t num_in(PokerPlayer** one = 0) {
+        size_t r = 0; 
+        for (auto& p : *this) {
+            if (p.in) {
+                r++;
+                if (one) *one = &p;
+            }
+        } 
+        return r;
+    }
+    bool any_in() {return num_in() > 0;}
+    PokerPlayer* one_in() {PokerPlayer* res; size_t ni = num_in(&res); return ni == 1 ? res : 0;}
+    void reset() {turn = _first;}
+    void bring_all_in() {for (auto& p : *this) p.in = true;}
+    PokerPlayer& get(size_t idx) {assert(idx < this->size() && "oob player get"); return this->at(idx);}
+    PokerPlayer const& get(size_t idx) const {assert(idx < this->size() && "oob player get"); return this->at(idx);}
+    PokerPlayer& cur() {return this->at(turn);}
+    PokerPlayer& first() {return this->at(_first);}
+    PokerPlayer* next() {
+        do {
+            turn = (turn + 1) % this->size();
+        } while (!cur().in && turn != _first);
+        return &cur();
+    }
+    PokerPlayer* next_under(const Money call) {
+        PokerPlayer* const _first = &cur();
+        PokerPlayer* n;
+        do {
+            n = next();
+            if (n->bet < call) return n;
+        } while (n != _first);
+        return 0;
+    }
+private:
+    size_t _first, turn;
+};
+
 struct PokerState : public PokerFiniteState {
     PokerState(PlayerList& incoming, size_t rounds = 1) 
         : PokerFiniteState({PokerFiniteState::DEAL}), deck(Deck::new_shuffled()), bet(0.), pot(0.), round(rounds), players(incoming) {}
@@ -307,6 +307,7 @@ struct RaiseAction : public PokerBetAction {
 struct FoldAction : public PokerBetAction {
     FoldAction(size_t self) : PokerBetAction(self) {}
     virtual void perform(PokerState& game) override final {
+        assert(game.state != PokerState::BET_CHECK && "can't fold when you can check");
         game.players.get(self).in = false;
     }
 };
@@ -335,6 +336,11 @@ struct PokerPlayerController {
     }
 };
 
+// typedef enum {
+//     INIT,
+//     STATE_CHANGE,
+
+// } poker_event_e;
 
 struct PokerGame : public PokerState {
     PokerGame(PlayerList& incoming, size_t rounds = 2) : PokerState(incoming, rounds) {}
@@ -459,8 +465,7 @@ struct PokerGame : public PokerState {
     }
     pokerFSMinput_e exec_SHOW() {
         PokerPlayerController::ShowResult s;
-        players.reset();
-        players.cur().controller->discard(*this, players.cur());
+        players.cur().controller->show(*this, players.cur());
         if (s.code == s.CONTROL_BUSY) return busy();
         return ready(INP_NONE);
     }
@@ -472,13 +477,23 @@ struct PokerGame : public PokerState {
     }
 
     pokerFSMinput_e exec_END() {
-        size_t besti = 0; hand_e best = HAND_HIGHCARD;
+        size_t besti = 0; hand_e best = HAND_HIGHCARD; rank_e highcard = RANK_2;
         for (auto& p : players) {
             if (p.in) {
-                hand_e cur = p.hand.get_marked().find_best_hand();
+                Deck hand = p.hand.get_marked();
+                hand_e cur = hand.find_best_hand();
                 if (cur > best) {
                     best = cur;
                     besti = p.index;
+                    highcard = hand.get_highcard().rank;
+                }
+                if (cur == best) {
+                    rank_e cur_hc = hand.get_highcard().rank;
+                    if (cur_hc > highcard) {
+                        highcard = cur_hc;
+                        best = cur;
+                        besti = p.index;
+                    }
                 }
             }
         }
@@ -489,7 +504,6 @@ struct PokerGame : public PokerState {
     }
 
     Result step() {
-        print();
         next(execute());
         return result;
     }
