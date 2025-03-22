@@ -269,7 +269,7 @@ void PokerGame::Result::print() const {
 
 void PokerGame::print() const {
     printf("\n\n====STATE INFO====\n");
-    printf("state: %s; round: %lu; pot: $%.2Lf\n", this->get_name(), this->round, this->pot);
+    printf("state: %s; round: %lu; pot: $%.2Lf; bet: $%.2Lf\n", this->get_name(), this->round, this->pot, this->bet);
     printf("player %lu's turn (%lu first)\n", players.get_turn(), players.get_first());
     printf("they have %.2Lf bet now, %.2Lf in their stack, their hand:\n", players.cur().bet, players.cur().stack);
     players.cur().hand.print();
@@ -465,6 +465,25 @@ PokerPlayerController::DiscardResult ConsolePPC::discard(PokerState const& game,
     } while (1);
     return DiscardResult{Result::CONTROL_OK};
 }
+
+
+
+// int tmain() {
+    
+//     PlayerList players;
+
+//     players.add(new ConsolePPC());
+//     players.add(new ConsolePPC());
+//     players.add(new ConsolePPC());
+
+//     PokerGame game(players);
+
+//     game.run().print();
+
+
+//     return 0;
+// }
+
 
 
 

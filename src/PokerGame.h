@@ -93,7 +93,7 @@ struct PlayerList : public std::vector<PokerPlayer> {
     void set_first(size_t f);
     size_t get_first() const;
     size_t num_in(PokerPlayer** one = 0);
-    bool any_in();;
+    bool any_in();
     PokerPlayer* one_in();
     void reset();
     void bring_all_in();
@@ -181,7 +181,6 @@ struct PokerGame : public PokerState {
     pokerFSMinput_e execute();
 
     pokerFSMinput_e busy();
-
     pokerFSMinput_e ready(pokerFSMinput_e inp = INP_NONE);
 
     pokerFSMinput_e exec_DEAL();
@@ -195,13 +194,10 @@ struct PokerGame : public PokerState {
     pokerFSMinput_e exec_SHOW();
     pokerFSMinput_e exec_DISCARD_ADV();
     pokerFSMinput_e exec_SHOW_ADV();
-
     pokerFSMinput_e exec_END();
 
     Result step();
-
     Result step_until_busy();
-
     Result run();
 
 };
