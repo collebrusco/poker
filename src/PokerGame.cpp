@@ -429,7 +429,7 @@ PokerGame::Result PokerGame::run() {
 
 
 
-PokerPlayerController::BetResult ConsolePPC::bet(PokerState const& game, PokerPlayer const& player) {
+PokerPlayerController::BetResult ConsolePlayer::bet(PokerState const& game, PokerPlayer const& player) {
     std::cout << "Player " << player.index << ", time to bet. here is your hand:\n";
     player.hand.print();
     if (game.bet == player.bet) {
@@ -450,7 +450,7 @@ PokerPlayerController::BetResult ConsolePPC::bet(PokerState const& game, PokerPl
     }
     return new FoldAction(player.index);
 }
-PokerPlayerController::DiscardResult ConsolePPC::discard(PokerState const& game, PokerPlayer const& player) {
+PokerPlayerController::DiscardResult ConsolePlayer::discard(PokerState const& game, PokerPlayer const& player) {
     std::cout << "Player " << player.index << ", time to discard. ";
     size_t i;
     Deck display = player.hand;
@@ -467,14 +467,13 @@ PokerPlayerController::DiscardResult ConsolePPC::discard(PokerState const& game,
 }
 
 
-
 // int tmain() {
     
 //     PlayerList players;
 
-//     players.add(new ConsolePPC());
-//     players.add(new ConsolePPC());
-//     players.add(new ConsolePPC());
+//     players.add(new ConsolePlayer());
+//     players.add(new ConsolePlayer());
+//     players.add(new ConsolePlayer());
 
 //     PokerGame game(players);
 
@@ -483,8 +482,3 @@ PokerPlayerController::DiscardResult ConsolePPC::discard(PokerState const& game,
 
 //     return 0;
 // }
-
-
-
-
-

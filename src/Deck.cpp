@@ -157,10 +157,11 @@ void Deck::add(rank_e rank, suit_e suit) {
     this->add(Card{rank, suit, false});
 }
 
-void Deck::shuffle(uint32_t N) {
+void Deck::shuffle(uint32_t N, bool cut) {
     for (uint32_t i = 0; i < N; i++) {
         this->push_back(this->draw_random());
     }
+    if (cut) this->cut();
 }
 
 Deck Deck::deal(size_t const N) {
@@ -202,6 +203,18 @@ Deck &Deck::operator-=(Deck const &other) {
         if (idx < this->size()) this->remove(idx);
     }
     return *this;
+}
+
+Deck Deck::operator+(Deck const &other) {
+    Deck res(*this);
+    res += other;
+    return res;
+}
+
+Deck Deck::operator-(Deck const &other) {
+    Deck res(*this);
+    res -= other;
+    return res;
 }
 
 Deck Deck::get_marked() const {

@@ -100,11 +100,13 @@ static inline hand_e better_hand(hand_e a, hand_e b) {
 
 struct Deck : private std::vector<Card> {
     Deck(bool empty = false);
+
     size_t size() const;
     std::vector<Card>::iterator begin();
     std::vector<Card>::iterator end();
     std::vector<Card>::const_iterator begin() const;
     std::vector<Card>::const_iterator end() const;
+
     static Deck new_empty();
     static Deck new_deck();
     static Deck new_shuffled(uint32_t N = 2048);
@@ -114,7 +116,7 @@ struct Deck : private std::vector<Card> {
     Card remove(size_t i);
     size_t find(Card card) const;
     void cut();
-    void shuffle(uint32_t N = 2048);
+    void shuffle(uint32_t N = 2048, bool cut = true);
     Card peek() const;
     Card draw();
     Card draw_random();
@@ -126,16 +128,42 @@ struct Deck : private std::vector<Card> {
     bool is_subset(Deck const& other) const;
     Deck& operator+=(Deck const& other);
     Deck& operator-=(Deck const& other);
+    Deck operator+(Deck const& other);
+    Deck operator-(Deck const& other);
     Deck get_marked() const;
     Card get_highcard() const;
     void mark_all(bool mark = true) const;
     void mark(size_t i, bool mark = true) const;
 
     hand_e find_best_hand() const;
-
+    
     void print() const;
-
+    
 };
 
+struct DeckSet {
+    inline DeckSet(Deck const& in, size_t n = 1) : deck(in), options(Deck::new_deck() - in), N(n) {assert(N==1 && "n > 1 unimplemented :(");}
+    Deck const& deck;
+    Deck const options;
+    size_t const N;
+    struct DeckSetIterator {
+        std::vector<Card>::const_iterator it;
+        DeckSet* home;
+        inline DeckSetIterator(DeckSet* h, std::vector<Card>::const_iterator const& in) : home(h), it(in) {}
+        inline DeckSetIterator& operator++() {++it; return *this;}
+        inline Deck operator*() const {
+            Deck res = home->deck; res.add(*it); return res;
+        }
+        inline bool operator!=(DeckSetIterator const& other) {
+            return this->it != other.it;
+        }
+    };
+    inline DeckSetIterator begin() {
+        return DeckSetIterator(this, options.begin());
+    }
+    inline DeckSetIterator end() {
+        return DeckSetIterator(this, options.end());
+    }
+};
 
 #endif /* DECK_H */

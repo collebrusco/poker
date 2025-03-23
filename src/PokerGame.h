@@ -146,6 +146,7 @@ struct AllInAction : public PokerBetAction {
 
 
 struct PokerPlayerController {
+    virtual ~PokerPlayerController() = default;
     typedef struct Result {enum {CONTROL_OK = 0, CONTROL_BUSY} code;} DiscardResult, ShowResult;
     struct BetResult : public Result {
         inline BetResult(PokerBetAction* act) : action(act) {code = act == 0 ? CONTROL_BUSY : CONTROL_OK;}
@@ -202,11 +203,12 @@ struct PokerGame : public PokerState {
 
 };
 
-struct ConsolePPC : public PokerPlayerController {
-    ConsolePPC() : PokerPlayerController() {}
+struct ConsolePlayer : public PokerPlayerController {
+    ConsolePlayer() : PokerPlayerController() {}
     virtual BetResult bet(PokerState const& game, PokerPlayer const& player) override final;
     virtual DiscardResult discard(PokerState const& game, PokerPlayer const& player) override final;
 };
+
 
 
 
