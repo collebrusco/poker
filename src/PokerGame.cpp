@@ -247,10 +247,10 @@ void AllInAction::perform(PokerState& game) {
 }
 
 
-PokerPlayerController::ShowResult PokerPlayerController::show(PokerState const& game, PokerPlayer const& player) {
+PokerPlayerController::ControlResult PokerPlayerController::show(PokerState const& game, PokerPlayer const& player) {
     assert(player.hand.size() == 5 && "if a players hand is bigger than a poker hand, you must show() to select what cards to play");
     player.hand.mark_all();
-    return Result{Result::CONTROL_OK};
+    return CONTROL_OK;
 }
 
 // typedef enum {
@@ -332,19 +332,19 @@ pokerFSMinput_e PokerGame::exec_PLAYER_RESET() {
     players.reset(); return INP_NONE;
 }
 pokerFSMinput_e PokerGame::exec_BET_CHECK() {
-    PokerPlayerController::BetResult b = players.cur().controller->bet(*this, players.cur());
-    if (b.code == b.CONTROL_BUSY) return busy();
+    PokerBetAction* b = players.cur().controller->bet(*this, players.cur());
+    if (!b) return busy();
     Money bet_before = this->bet;
-    b.action->perform(*this);
+    b->perform(*this);
     if (this->bet > bet_before)
         return ready(INP_BET);
     else
         return ready(INP_CHECK);
 }
 pokerFSMinput_e PokerGame::exec_BET_OPEN() {
-    PokerPlayerController::BetResult b = players.cur().controller->bet(*this, players.cur());
-    if (b.code == b.CONTROL_BUSY) return busy();
-    b.action->perform(*this);
+    PokerBetAction* b = players.cur().controller->bet(*this, players.cur());
+    if (!b) return busy();
+    b->perform(*this);
     if (players.one_in())
         return ready(INP_ONE_LEFT);
     else
@@ -361,8 +361,9 @@ pokerFSMinput_e PokerGame::exec_ROUND_CHECK() {
     return --round ? INP_MORE_ROUNDS : INP_NONE;
 }
 pokerFSMinput_e PokerGame::exec_DISCARD() {
-    PokerPlayerController::DiscardResult d = players.cur().controller->discard(*this, players.cur());
-    if (d.code == d.CONTROL_BUSY) return busy();
+    if (players.cur().controller->discard(*this, players.cur())
+        == PokerPlayerController::CONTROL_BUSY) 
+            return busy();
     Deck disc = players.cur().hand.get_marked();
     players.cur().hand -= disc;
     for (auto c : disc) { (void)c;
@@ -371,9 +372,9 @@ pokerFSMinput_e PokerGame::exec_DISCARD() {
     return ready(INP_NONE);
 }
 pokerFSMinput_e PokerGame::exec_SHOW() {
-    PokerPlayerController::ShowResult s;
-    s = players.cur().controller->show(*this, players.cur());
-    if (s.code == s.CONTROL_BUSY) return busy();
+    if (players.cur().controller->show(*this, players.cur())
+        == PokerPlayerController::CONTROL_BUSY) 
+            return busy();
     return ready(INP_NONE);
 }
 pokerFSMinput_e PokerGame::exec_DISCARD_ADV() {
@@ -438,7 +439,7 @@ PokerGame::Result PokerGame::run_noisy() {
     return result;
 }
 
-PokerPlayerController::BetResult ConsolePlayer::bet(PokerState const& game, PokerPlayer const& player) {
+PokerBetAction* ConsolePlayer::bet(PokerState const& game, PokerPlayer const& player) {
     std::cout << "Player " << player.index << ", time to bet. here is your hand:\n";
     player.hand.print();
     if (game.bet == player.bet) {
@@ -459,7 +460,7 @@ PokerPlayerController::BetResult ConsolePlayer::bet(PokerState const& game, Poke
     }
     return new FoldAction(player.index);
 }
-PokerPlayerController::DiscardResult ConsolePlayer::discard(PokerState const& game, PokerPlayer const& player) {
+PokerPlayerController::ControlResult ConsolePlayer::discard(PokerState const& game, PokerPlayer const& player) {
     std::cout << "Player " << player.index << ", time to discard. ";
     size_t i;
     Deck display = player.hand;
@@ -472,7 +473,7 @@ PokerPlayerController::DiscardResult ConsolePlayer::discard(PokerState const& ga
         Card pull = display.remove(i);
         player.hand.mark(player.hand.find(pull));
     } while (1);
-    return DiscardResult{Result::CONTROL_OK};
+    return CONTROL_OK;
 }
 
 

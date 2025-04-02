@@ -9,8 +9,8 @@
 
 struct BasicAIPlayer : public PokerPlayerController {
     BasicAIPlayer() : PokerPlayerController() {}
-    virtual BetResult bet(PokerState const& game, PokerPlayer const& player) override final;
-    virtual DiscardResult discard(PokerState const& game, PokerPlayer const& player) override final;
+    virtual PokerBetAction* bet(PokerState const& game, PokerPlayer const& player) override final;
+    virtual ControlResult discard(PokerState const& game, PokerPlayer const& player) override final;
 };
 
 #endif /* POKER_AI_H */
