@@ -26,7 +26,7 @@ void PokerPlayer::end_round() {
     bet = 0.f; in = true; hand = Deck::new_empty();
 }
 
-const char* PokerFiniteState::get_name() const {
+const char* PokerFSM::get_name() const {
     static const char* names[] = {
         "DEAL",
         "PLAYER_RESET_INIT",
@@ -44,7 +44,7 @@ const char* PokerFiniteState::get_name() const {
         "END",
     }; return names[state];
 }
-void PokerFiniteState::next(pokerFSMinput_e input) {
+void PokerFSM::next(pokerFSMinput_e input) {
     switch (state) {
     case BET_CHECK:
     case BET_OPEN:
@@ -99,19 +99,19 @@ void PokerFiniteState::next(pokerFSMinput_e input) {
         break;
     }
 }
-void PokerFiniteState::next_DEAL(pokerFSMinput_e input) {
+void PokerFSM::next_DEAL(pokerFSMinput_e input) {
     (void)input; state = PLAYER_RESET_INIT;
 }
-void PokerFiniteState::next_PLAYER_RESET_INIT(pokerFSMinput_e input) {
+void PokerFSM::next_PLAYER_RESET_INIT(pokerFSMinput_e input) {
     (void)input; state = BET_CHECK;
 }
-void PokerFiniteState::next_PLAYER_RESET_DISC(pokerFSMinput_e input) {
+void PokerFSM::next_PLAYER_RESET_DISC(pokerFSMinput_e input) {
     (void)input; state = DISCARD;
 }
-void PokerFiniteState::next_PLAYER_RESET_SHOW(pokerFSMinput_e input) {
+void PokerFSM::next_PLAYER_RESET_SHOW(pokerFSMinput_e input) {
     (void)input; state = SHOW;
 }
-void PokerFiniteState::next_BET_CHECK(pokerFSMinput_e input) {
+void PokerFSM::next_BET_CHECK(pokerFSMinput_e input) {
     bool check = test_FSMinput(input, INP_CHECK);
     bool bet = test_FSMinput(input, INP_BET);
     assert(check ^ bet && "one of check or bet must have happened, not both or none");
@@ -120,47 +120,47 @@ void PokerFiniteState::next_BET_CHECK(pokerFSMinput_e input) {
     if (bet)
         state = ADV_OPEN;
 }
-void PokerFiniteState::next_BET_OPEN(pokerFSMinput_e input) {
+void PokerFSM::next_BET_OPEN(pokerFSMinput_e input) {
     if (test_FSMinput(input, INP_ONE_LEFT))
         state = END;
     else
         state = ADV_OPEN;
 }
-void PokerFiniteState::next_ADV_CHECK(pokerFSMinput_e input) {
+void PokerFSM::next_ADV_CHECK(pokerFSMinput_e input) {
     if (test_FSMinput(input, INP_PLAYER_FIRST))
         state = ROUND_CHECK;
     else
         state = BET_CHECK;
 }
-void PokerFiniteState::next_ADV_OPEN(pokerFSMinput_e input) {
+void PokerFSM::next_ADV_OPEN(pokerFSMinput_e input) {
     if (test_FSMinput(input, INP_PLAYER_NULL))
         state = ROUND_CHECK;
     else
         state = BET_OPEN;
 }
-void PokerFiniteState::next_ROUND_CHECK(pokerFSMinput_e input) {
+void PokerFSM::next_ROUND_CHECK(pokerFSMinput_e input) {
     if (test_FSMinput(input, INP_MORE_ROUNDS))
         state = PLAYER_RESET_DISC;
     else
         state = PLAYER_RESET_SHOW;
 }
-void PokerFiniteState::next_DISCARD(pokerFSMinput_e input) {
+void PokerFSM::next_DISCARD(pokerFSMinput_e input) {
     (void)input; state = DISCARD_ADV;
 }
-void PokerFiniteState::next_DISCARD_ADV(pokerFSMinput_e input) {
+void PokerFSM::next_DISCARD_ADV(pokerFSMinput_e input) {
     if (test_FSMinput(input, INP_PLAYER_FIRST))
         state = BET_CHECK;
     else
         state = DISCARD;
 
 }
-void PokerFiniteState::next_SHOW_ADV(pokerFSMinput_e input) {
+void PokerFSM::next_SHOW_ADV(pokerFSMinput_e input) {
     if (test_FSMinput(input, INP_PLAYER_FIRST))
         state = END;
     else
         state = SHOW;
 }
-void PokerFiniteState::next_SHOW(pokerFSMinput_e input) {
+void PokerFSM::next_SHOW(pokerFSMinput_e input) {
     (void)input; state = SHOW_ADV;
 }
 
@@ -218,7 +218,7 @@ PokerPlayer* PlayerList::next_under(const Money call) {
  */
 
 PokerState::PokerState(PlayerList& incoming, size_t rounds) 
-    : PokerFiniteState({PokerFiniteState::DEAL}), deck(Deck::new_shuffled()), bet(0.), pot(0.), round(rounds), players(incoming) {
+    : PokerFSM({PokerFSM::DEAL}), deck(Deck::new_shuffled()), bet(0.), pot(0.), round(rounds), players(incoming) {
 }
 
 void CheckAction::perform(PokerState& game) {
@@ -273,7 +273,8 @@ void PokerGame::print() const {
     printf("player %lu's turn (%lu first)\n", players.get_turn(), players.get_first());
     printf("they have %.2Lf bet now, %.2Lf in their stack, their hand:\n", players.cur().bet, players.cur().stack);
     players.cur().hand.print();
-    printf("\n\n");
+    printf("result: "); result.print();
+    printf("===END===\n\n");
 }
 
 pokerFSMinput_e PokerGame::execute() {
@@ -315,6 +316,7 @@ pokerFSMinput_e PokerGame::busy() {
 }
 
 pokerFSMinput_e PokerGame::ready(pokerFSMinput_e inp) {
+    result.status = Result::OK;
     return inp | INP_CONTROL_READY;
 }
 
@@ -370,7 +372,7 @@ pokerFSMinput_e PokerGame::exec_DISCARD() {
 }
 pokerFSMinput_e PokerGame::exec_SHOW() {
     PokerPlayerController::ShowResult s;
-    players.cur().controller->show(*this, players.cur());
+    s = players.cur().controller->show(*this, players.cur());
     if (s.code == s.CONTROL_BUSY) return busy();
     return ready(INP_NONE);
 }
@@ -427,7 +429,14 @@ PokerGame::Result PokerGame::run() {
     return result;
 }
 
-
+PokerGame::Result PokerGame::run_noisy() {
+    this->print();
+    do {
+        this->step();
+        this->print();
+    } while (result.status != Result::END);
+    return result;
+}
 
 PokerPlayerController::BetResult ConsolePlayer::bet(PokerState const& game, PokerPlayer const& player) {
     std::cout << "Player " << player.index << ", time to bet. here is your hand:\n";

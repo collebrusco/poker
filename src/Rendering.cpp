@@ -51,7 +51,7 @@ void CardRenderer::sync_to_camera(Camera& cam) {
 }
 
 void CardRenderer::sync_to_card(Card const& card) {
-    int y;
+    int y = 0;
     switch(card.suit) {
     case SUIT_CLUBS:
         y = 4; break;

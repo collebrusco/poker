@@ -149,7 +149,7 @@ struct DeckSet {
     struct DeckSetIterator {
         std::vector<Card>::const_iterator it;
         DeckSet* home;
-        inline DeckSetIterator(DeckSet* h, std::vector<Card>::const_iterator const& in) : home(h), it(in) {}
+        inline DeckSetIterator(DeckSet* h, std::vector<Card>::const_iterator const& in) : it(in), home(h) {}
         inline DeckSetIterator& operator++() {++it; return *this;}
         inline Deck operator*() const {
             Deck res = home->deck; res.add(*it); return res;

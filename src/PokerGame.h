@@ -49,7 +49,7 @@ static inline bool test_FSMinput(pokerFSMinput_e to_test, pokerFSMinput_e test) 
     return to_test & test;
 }
 
-struct PokerFiniteState {
+struct PokerFSM {
     enum {
         DEAL = 0,
         PLAYER_RESET_INIT,
@@ -107,7 +107,7 @@ private:
     size_t _first, turn;
 };
 
-struct PokerState : public PokerFiniteState {
+struct PokerState : public PokerFSM {
     PokerState(PlayerList& incoming, size_t rounds = 2);
     Deck deck;
     Money bet;
@@ -200,6 +200,7 @@ struct PokerGame : public PokerState {
     Result step();
     Result step_until_busy();
     Result run();
+    Result run_noisy();
 
 };
 
