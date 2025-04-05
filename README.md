@@ -1,8 +1,43 @@
 # poker thing or something
 shoutout eva   
-igtchaiimtwt
+This is a state machine based poker implementation with an abstracted player interface.   
+The poker backend state machine is entirely separate from any user or AI controller code, or any rendering code.  
+### writing players 
+Players make their moves through an interface, you can easily take a crack at writing a poker-playing AI by overriding these two methods in PokerPlayerController.
+```c++
+virtual PokerBetAction* bet(PokerState const& game, PokerPlayer const& player) = 0;
+virtual ControlResult discard(PokerState const& game, PokerPlayer const& player) = 0;
+```
+you can return one of these bet actions to make your move.
+```c++
+struct PokerBetAction {
+    virtual void perform(PokerState& game) = 0;
+};
+struct CheckAction  : public PokerBetAction;
+struct CallAction   : public PokerBetAction;
+struct RaiseAction  : public PokerBetAction;
+struct FoldAction   : public PokerBetAction;
+struct AllInAction  : public PokerBetAction;
+```
+I don't have any AI's written yet, only an implementation that asks the user to make their move in the console.    
+### use the backend
+This is how one instantiates and runs a game, but of course you'd have varied player types in reality, whether human or AI. You can see how you could simulate large numbers of games between different AIs to compare them.
+```c++
+PlayerList players;
 
-## asset info
+players.add(new ConsolePlayer());
+players.add(new ConsolePlayer());
+players.add(new ConsolePlayer());
+
+PokerGame game(players);
+
+game.run().print();
+```
+
+## frontend / renderer
+I am building a proper renderer / frontend for this game which will have a PokerPlayerController implementation so the user can play thru a gui. TBD
+
+## notes
 this is just notes for me    
 cards png was made for free nicely by someone [here](https://devforum.play.date/t/playing-card-deck-imagetable-free-for-your-card-game/994)     
 ### dims
