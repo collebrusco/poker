@@ -9,38 +9,30 @@
 #include <stdint.h>
 #include <cstddef>
 #include <flgl.h>
+#include <flgl/tools.h>
 #include "Stopwatch.h"
 
-// typedef void(*driver_init_f)(void); 
-// typedef void(*driver_update_f)(void);
-// typedef void(*driver_render_f)(void);
-// typedef void(*driver_destroy_f)(void);
-// typedef void(*driver_update_f)(float dt, Keyboard const& kb, Mouse const& mouse);
-
-// struct Driver {
-//     driver_init_f init;
-//     driver_update_f update;
-//     driver_render_f render;
-//     driver_destroy_f destroy;
-// };
-
-
+/* usage: DRIVER_MAIN_FUNCTION(main, <name of your implementation>); */
 #define DRIVER_MAIN_FUNCTION(main_name, Classname) int main_name() {Classname *driver = new Classname(); driver->start(); delete driver; return 0;}
 
-class GameDriver {
+class Driver {
 protected:
 	void close();
+    inline void use_cam(Camera& c) {this->cam = &c;}
 public:
     void start();
     void loop();
-    GameDriver();
+    Driver();
 
-    float const& dt;
-    Stopwatch const& launch_timer;
+    inline float dt() const {return _dt;};
+    inline Stopwatch const& launch_timer() {return _launch_timer;}
+
+    glm::vec2 world_mouse(glm::vec2 mp, Camera* camovr = 0) const;
 
 private:
 	bool _close;
 	float _dt;
+    const Camera* cam;
 	Stopwatch _launch_timer;
     Stopwatch delta_timer;
     virtual void user_create() = 0;

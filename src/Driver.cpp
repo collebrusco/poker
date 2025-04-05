@@ -3,17 +3,35 @@
 #include <flgl/logger.h>
 #include <flgl.h>
 LOG_MODULE(driver);
+using namespace glm;
 
 #define COMPLICATED_LOOP 0
 
-GameDriver::GameDriver() :  dt(_dt), launch_timer(_launch_timer),
-                            _close(false),
+Driver::Driver() :  _close(false),
                             _dt(1.f/60.f),
+                            cam(0),
                             _launch_timer(SECONDS),
                             delta_timer(SECONDS)
 {}
 
-void GameDriver::exit() {
+vec2 Driver::world_mouse(vec2 mp, Camera *camovr) const {
+    mp /= vec2((float)window.frame.x, (float)window.frame.y);
+    vec4 p = vec4((mp.x * 2.) - 1.,  -((mp.y * 2) - 1), 0., 1.);
+    vec4 w;
+    if (camovr) {
+        w = camovr->iview() * (camovr->iproj() * (p));
+    } else {
+        if (this->cam) {
+            w = this->cam->iview() * (this->cam->iproj() * (p));
+        } else {
+            LOG_ERR("ERROR: Driver::world_mouse() requires you set the camera with Driver::use_cam() or pass a cam as an argument");
+            w = vec4();
+        }
+    }
+    return w.xy();
+}
+
+void Driver::exit() {
     user_destroy();
 }
 
@@ -24,7 +42,7 @@ static Stopwatch t_ren(MICROSECONDS);
 
 
 #define min(x,y) ((x)<(y)?(x):(y))
-void GameDriver::loop() {
+void Driver::loop() {
 
 #ifdef BENCHMARK
     static float tu[32]; 
@@ -80,7 +98,7 @@ void GameDriver::loop() {
     }
 }
 
-void GameDriver::start() {
+void Driver::start() {
     _launch_timer.start();
     user_create();
     LOG_INF("created, loop:");
@@ -91,6 +109,27 @@ void GameDriver::start() {
     exit();
 }
 
-void GameDriver::close() {
+void Driver::close() {
 	_close = true;
 }
+
+
+
+/**
+I debated making this driver more C style like so. 
+I leave this here in case I want to look into that again */
+
+// typedef void(*driver_init_f)(void); 
+// typedef void(*driver_update_f)(void);
+// typedef void(*driver_render_f)(void);
+// typedef void(*driver_destroy_f)(void);
+// typedef void(*driver_update_f)(float dt, Keyboard const& kb, Mouse const& mouse);
+
+// struct Driver {
+//     driver_init_f init;
+//     driver_update_f update;
+//     driver_render_f render;
+//     driver_destroy_f destroy;
+// };
+
+

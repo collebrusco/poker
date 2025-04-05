@@ -11,7 +11,7 @@
 
 
 int main() {
-    
+
     PlayerList players;
 
     players.add(new ConsolePlayer());
@@ -22,7 +22,7 @@ int main() {
 
     game.run().print();
 
-    // GameDriver* dr = new PokerDriver();
+    // Driver* dr = new PokerDriver();
 
     // dr->start();
 
